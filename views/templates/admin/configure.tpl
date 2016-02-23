@@ -41,6 +41,13 @@
                         <input type="{$value.type}" class="form-control" id="{$key}" name="{$key}" value="{$configValues.$key|default:2}" min="2" step="0.01">
                     </div>
                 </div>
+            {elseif $value.type == 'textarea'}
+                <div class="form-group">
+                    <label for="{$key}" class="col-sm-2 control-label">{$value.desc}</label>
+                    <div class="col-sm-10">
+                        <textarea class="form-control" id="{$key}" name="{$key}" rows="2">{$configValues.$key}</textarea>
+                    </div>
+                </div>
             {/if}
         {/foreach}
 

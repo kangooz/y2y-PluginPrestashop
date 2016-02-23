@@ -71,7 +71,7 @@ class Y2YPSSM extends CarrierModule {
 
         $this->_loadFields();
         $this->validApi = $this->_testApi();
-
+        
         if (self::isInstalled($this->name)) {
             if (!$this->validApi) {
                 $this->warning .= $this->l('Your api key and/or secret are not valid. The You2You shipping method will not be available until you correct those fields.') . ' ';
@@ -91,7 +91,7 @@ class Y2YPSSM extends CarrierModule {
             'Y2YPSSM_STORE_CITY' => array('type' => 'text', 'desc' => $this->l('Store City')),
             'Y2YPSSM_STORE_ADDRESS' => array('type' => 'text', 'desc' => $this->l('Store Address')),
             'Y2YPSSM_STORE_POSTALCODE' => array('type' => 'text', 'desc' => $this->l('Store Postalcode')),
-            'Y2YPSSM_STORE_INFORMATION' => array('type' => 'text', 'desc' => $this->l('Store Information')),
+            'Y2YPSSM_STORE_INFORMATION' => array('type' => 'textarea', 'desc' => $this->l('Store Information')),
             'Y2YPSSM_OPENING_HOURS' => array('type' => 'time', 'desc' => $this->l('Opening hours')),
             'Y2YPSSM_CLOSING_HOURS' => array('type' => 'time', 'desc' => $this->l('Opening hours')),
             'Y2YPSSM_LUNCH_TIME_BEGIN' => array('type' => 'time', 'desc' => $this->l('Lunch time')),
@@ -158,6 +158,16 @@ class Y2YPSSM extends CarrierModule {
         $this->_notices['warning'][] = $message;
     }
     
+    private function _addDefaultValues($values){
+        $y2y_values = $this->getConfigValues();
+        foreach($values as $y2y_key => $ps_key){
+            
+            if(empty($y2y_values[$y2y_key])){
+                Configuration::updateValue($y2y_key, Configuration::get($ps_key, ''));
+            }
+            
+        }
+    }
     public function install() {
         if (!extension_loaded('curl')) {
             $this->_errors[] = $this->l('You have to enable the cURL extension on your server to install this module');
@@ -181,6 +191,14 @@ class Y2YPSSM extends CarrierModule {
             return false;
         }
         
+        //Add default values
+        $this->_addDefaultValues(array(
+            'Y2YPSSM_STORE_ADDRESS' => 'PS_SHOP_ADDR1',
+            'Y2YPSSM_STORE_CITY' => 'PS_SHOP_CITY',
+            'Y2YPSSM_STORE_COUNTRY' => 'PS_SHOP_COUNTRY',
+            'Y2YPSSM_STORE_POSTALCODE' => 'PS_SHOP_CODE',
+            'Y2YPSSM_STORE_INFORMATION' => 'PS_SHOP_DETAILS'
+        ));
         return true;
     }
 
@@ -277,17 +295,19 @@ class Y2YPSSM extends CarrierModule {
             
         }
         
-        return (count($this->_notices) > 0);
+        return (count($this->_notices['error']) == 0);
     }
     
     protected function saveAdminFields() {
-
+        
         foreach ($this->_fieldsList as $key => $type) {
             $value = Tools::getValue($key);
             if (is_array($value)) {
                 $value = serialize($value);
+            }else{
+                Configuration::updateValue($key, $value);
             }
-            Configuration::updateValue($key, $value);
+            
         }
 
         $this->_addSuccessMessage($this->l('Information saved'));
