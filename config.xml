@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+	<name>y2ypssm</name>
+	<displayName><![CDATA[You2You]]></displayName>
+	<version><![CDATA[0.0.1]]></version>
+	<description><![CDATA[You2You, collaborative delivery. Boost your sales by offering a delivery service in 3 hours or by appointment.]]></description>
+	<author><![CDATA[Partner IT Group]]></author>
+	<tab><![CDATA[shipping_logistics]]></tab>
+	<confirmUninstall><![CDATA[Are you sure you want to uninstall the module?]]></confirmUninstall>
+	<is_configurable>1</is_configurable>
+	<need_instance>1</need_instance>
+	<limited_countries></limited_countries>
+</module>

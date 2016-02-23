@@ -1,0 +1,21 @@
+Nova encomenda de {shop_url}</h3>
+
+Reference: {reference}
+
+Loja: {store_address}
+Informaçoes adicionais: {store_information}
+
+Detalhes da encomenda: 
+{order_details}
+
+Destino: {destination_address}
+{destination_address_2}
+Informaçoes do destino: {destination_information}
+
+Empresa: {company}
+Client: {customer_name}
+
+Shipstart: {shipstart}
+Shipend: {shipend}
+
+Compensação: {compensation}€

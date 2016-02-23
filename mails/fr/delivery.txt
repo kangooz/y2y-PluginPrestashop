@@ -1,0 +1,21 @@
+Nouvelle commande sur {shop_url}</h3>
+
+Référence : {reference}
+
+Adresse de la boutique : {store_address}
+Informations : {store_information}
+
+Détails de la commande :
+{order_details}
+
+Adresse de livraison : {destination_address}
+{destination_address_2}
+Information : {destination_information}
+
+Société : {company}
+Client : {customer_name}
+
+Date de début : {shipstart}
+Date de fin : {shipend}
+
+Compensation : {compensation}€

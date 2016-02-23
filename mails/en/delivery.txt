@@ -1,0 +1,21 @@
+New order from {shop_url}</h3>
+
+Reference: {reference}
+
+Store: {store_address}
+Store information: {store_information}
+
+Order details: 
+{order_details}
+
+Destination: {destination_address}
+{destination_address_2}
+Destination information: {destination_information}
+
+Company: {company}
+Customer name: {customer_name}
+
+Shipstart: {shipstart}
+Shipend: {shipend}
+
+Compensation: {compensation}€
