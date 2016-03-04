@@ -48,6 +48,10 @@ class Y2YPSSM extends CarrierModule {
     private $_api;
     protected $validApi = false;
 
+    public static $validPostCodes = array(
+        '75', '92', '93', '94'
+    );
+    
     public function __construct() {
         $this->name = 'y2ypssm';
         $this->tab = 'shipping_logistics';
@@ -538,13 +542,16 @@ class Y2YPSSM extends CarrierModule {
         if (!$this->validApi) {
             return false;
         }
-        /*$id_address_delivery = Context::getContext()->cart->id_address_delivery;
-        $address = new Address($id_address_delivery);*/
-        /**
-         * Send the details through the API
-         * Return the price sent by the API
-         */
-        return (float)8;
+        $address = new Address($params->id_address_delivery);
+        $country = new Country($address->id_country);
+        
+        if($country->iso_code == 'FR'){
+            if(!self::isValidPostCode($address->postcode)){
+                return false;
+            }
+            return (float)8;
+        }
+        return false;
         
     }
 
@@ -629,6 +636,16 @@ class Y2YPSSM extends CarrierModule {
                 array('ps_order_id' => (int)$params['order']->id), 
                 'ps_cart_id = '.(int)$params['cart']->id
         );
+    }
+    
+    public static function isValidPostCode($postcode){
+        foreach (self::$validPostCodes as $frpostcode) {
+            if (substr($postcode, 0, 2) == $frpostcode) {
+                return true;
+            }
+        }
+        
+        return false;
     }
     
     /*****************************************/
