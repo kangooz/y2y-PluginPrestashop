@@ -201,7 +201,7 @@ if (!class_exists('Y2Y_API')) {
             
             $result = $this->get('/auth/test');
             
-            if(in_array($result['response_code'], array(401, 403))){
+            if(in_array($result['response_code'], array(401, 403, 404, 500))){
                 return false;
             }
             
