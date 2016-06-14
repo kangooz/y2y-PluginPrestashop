@@ -19,8 +19,8 @@
  * versions in the future. If you wish to customize PrestaShop for your
  * needs please refer to http://www.prestashop.com for more information.
  *
- *  @author    PrestaShop SA <contact@prestashop.com>
- *  @copyright 2007-2015 PrestaShop SA
+ *  @author    Partner IT Group <support@partner-it-group.com>
+ *  @copyright 2016 Partner IT Group
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  *  International Registered Trademark & Property of PrestaShop SA
  */
@@ -28,7 +28,6 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-require_once(_PS_MODULE_DIR_ . "/y2ypssm/classes/Y2Y_API.php");
 
 class Y2YPSSM extends CarrierModule {
 
@@ -65,6 +64,7 @@ class Y2YPSSM extends CarrierModule {
          * Set $this->bootstrap to true if your module is compliant with bootstrap (PrestaShop 1.6)
          */
         $this->bootstrap = true;
+        
 
         parent::__construct();
 
@@ -74,9 +74,15 @@ class Y2YPSSM extends CarrierModule {
         $this->confirmUninstall = $this->l('Are you sure you want to uninstall the module?');
 
         $this->_loadFields();
-        $this->validApi = $this->_testApi();
         
         if (self::isInstalled($this->name)) {
+            if(!extension_loaded("curl")){
+                $this->uninstall();
+                return;
+            }
+            
+            require_once(_PS_MODULE_DIR_ . "/y2ypssm/classes/Y2Y_API.php");
+            $this->validApi = $this->_testApi();
             if (!$this->validApi) {
                 $this->warning .= $this->l('Your api key and/or secret are not valid. The You2You shipping method will not be available until you correct those fields.') . ' ';
                 $this->_addWarningMessage($this->l('Your api key and/or secret are not valid. The You2You shipping method will not be available until you correct those fields.'));
@@ -96,6 +102,7 @@ class Y2YPSSM extends CarrierModule {
             'Y2YPSSM_STORE_ADDRESS' => array('type' => 'text', 'desc' => $this->l('Store Address')),
             'Y2YPSSM_STORE_POSTALCODE' => array('type' => 'text', 'desc' => $this->l('Store Postalcode')),
             'Y2YPSSM_STORE_INFORMATION' => array('type' => 'textarea', 'desc' => $this->l('Store Information')),
+            'Y2YPSSM_INLINE_CALENDAR' => array('type' => 'checkbox', 'desc' => $this->l('Inline Calendar')),
             'Y2YPSSM_OPENING_HOURS' => array('type' => 'time', 'desc' => $this->l('Opening hours')),
             'Y2YPSSM_CLOSING_HOURS' => array('type' => 'time', 'desc' => $this->l('Opening hours')),
             'Y2YPSSM_LUNCH_TIME_BEGIN' => array('type' => 'time', 'desc' => $this->l('Lunch time')),
@@ -172,6 +179,8 @@ class Y2YPSSM extends CarrierModule {
             
         }
     }
+    
+    
     public function install() {
         if (!extension_loaded('curl')) {
             $this->_errors[] = $this->l('You have to enable the cURL extension on your server to install this module');
@@ -189,8 +198,8 @@ class Y2YPSSM extends CarrierModule {
             return false;
         }
         
-        include(dirname(__FILE__) . '/sql/install.php');
-
+        require_once(dirname(__FILE__) . '/sql/install.php');
+      
         if(!$this->_registerHooks()){
             return false;
         }
@@ -269,12 +278,14 @@ class Y2YPSSM extends CarrierModule {
         //validate hours of days
         $openingHours = Tools::getValue('Y2YPSSM_OPENING_HOURS');
         $closingHours = Tools::getValue('Y2YPSSM_CLOSING_HOURS');
+        $lunchBegin = Tools::getValue('Y2YPSSM_LUNCH_TIME_BEGIN');
+        $lunchEnd = Tools::getValue('Y2YPSSM_LUNCH_TIME_END');
         $closedDay = Tools::getValue('Y2YPSSM_CLOSED_DAY');
         $invalidDays = array();
         $daysOfWeek = $this->getDaysOfWeek();
         
         foreach($daysOfWeek as $i => $day) {
-            if(!empty($openingHours[$i]) && !empty($closingHours[$i])){
+            /*if(!empty($openingHours[$i]) && !empty($closingHours[$i])){
                 $closedDay[$i] = '';
             }else if(!empty($closedDay[$i])){
                 $openingHours[$i] = '';
@@ -284,14 +295,33 @@ class Y2YPSSM extends CarrierModule {
                 $closingHours[$i] = '';
                 $closedDay[$i] = 'yes';
             }
-            
+            if(empty($closedDay[$i]) && strtotime($openingHours[$i]) >= strtotime($closingHours[$i])){
+                $invalidDays[] = $day;
+            }*/
+            if(!empty($closedDay[$i])){
+                $openingHours[$i] = '';
+                $closingHours[$i] = '';
+                $lunchBegin[$i] = '';
+                $lunchEnd[$i] = '';
+            }else if(!empty($openingHours[$i]) && !empty($closingHours[$i])){
+                $closedDay[$i] = '';
+            }else if(!empty($openingHours) || !empty($closingHours[$i])){
+                $openingHours[$i] = '';
+                $closingHours[$i] = '';
+                $lunchBegin[$i] = '';
+                $lunchEnd[$i] = '';
+                $closedDay[$i] = 'yes';
+            }
             if(empty($closedDay[$i]) && strtotime($openingHours[$i]) >= strtotime($closingHours[$i])){
                 $invalidDays[] = $day;
             }
             
+            
         }
         $_POST['Y2YPSSM_OPENING_HOURS'] = $openingHours;
         $_POST['Y2YPSSM_CLOSING_HOURS'] = $closingHours;
+        $_POST['Y2YPSSM_LUNCH_TIME_BEGIN'] = $lunchBegin;
+        $_POST['Y2YPSSM_LUNCH_TIME_END'] = $lunchEnd;
         $_POST['Y2YPSSM_CLOSED_DAY'] = $closedDay;
         
         if(count($invalidDays) > 0){
@@ -304,16 +334,18 @@ class Y2YPSSM extends CarrierModule {
     
     protected function saveAdminFields() {
         
+        $i='';
         foreach ($this->_fieldsList as $key => $type) {
             $value = Tools::getValue($key);
+            $i[]=$value;
             if (is_array($value)) {
                 $value = serialize($value);
+                Configuration::updateValue($key, $value);
             }else{
                 Configuration::updateValue($key, $value);
             }
-            
         }
-
+        //die(var_dump($i));
         $this->_addSuccessMessage($this->l('Information saved'));
     }
     
@@ -510,7 +542,7 @@ class Y2YPSSM extends CarrierModule {
 
         $timeout = (float)str_replace(',','.',$configValues['Y2YPSSM_TIMEOUT']);
         
-        $timeout = ($timeout > 2) ? $timeout*60*60 : 2*60*60;
+        $timeout = ($timeout <= 0) ? 0 : $timeout;
         $order_hour = date('H:i',$timestamp);
         $delivery_hour = strtotime(date('H:i',$timestamp+$timeout));
         $delivery_day_hour = strtotime(date('Y/m/d H:i',$timestamp+$timeout));
@@ -549,7 +581,7 @@ class Y2YPSSM extends CarrierModule {
             if(!self::isValidPostCode($address->postcode)){
                 return false;
             }
-            return (float)8;
+            return (float)5;
         }
         return false;
         
@@ -569,20 +601,279 @@ class Y2YPSSM extends CarrierModule {
         if(Tools::getValue('id_delivery_option') == Configuration::get('Y2YPSSM_CARRIER_ID').','){
             ob_start();?>
             <div class="form-group form-group-sm">
-                <label for="y2ypssm_delivery_date"><?php echo $this->l('Delivery Date');?></label>
-                <input type="text" class="form-control" style="width:40%" id="y2ypssm_delivery_date" name="y2ypssm_delivery_date" required="" data-field="datetime">
-                <div class="y2ypssm-datepicker-holder"></div>
+                <div id="y2y_module">
+                    <input type="hidden" class="form-control" id="y2y_hidden_date" name="y2y_hidden_date">
+                    <input type="hidden" class="form-control" id="y2y_delivery_date" name="y2y_delivery_date">
+                    <input type="hidden" class="form-control" id="y2y_hidden_time" name="y2y_hidden_time">
+                    <div class="y2ypssm-datepicker-holder"></div>
+                    <?php
+                    $result = $this->getConfigValues();
+                    $inline_cal=$result['Y2YPSSM_INLINE_CALENDAR'];
+                    if($inline_cal==='yes' || !empty($inline_cal))
+                    {
+                    ?>
+                        <div id="calendar" class="inline-calendar"></div>
+                        <div class="y2y_time">
+                            <div class="radio-buttons"></div>
+                        </div>
+                    <?php
+                    }else{
+                    ?>
+                        <div id="modal-y2y" class="col-1" style="display:none">
+                            <div id="calendar" class="col-1" style="float: left;"></div>
+                                <div class="y2y_time" style=" float: right;">
+                                    <div class="radio-buttons"></div>
+                                </div>
+                                <div style="width:100%;display:table; padding:4px;">
+                                <button class="button btn btn-default button-small" onclick="select_time()">
+                                    <span>Choisir</span>
+                                </button>
+                            </div>
+                        </div>
+                        <button class="call-modal button btn btn-default button-small"><span>Choose date</span></button>
+                        <?php
+                    }
+                    $closed_days = '';
+
+                    if(!empty($result['Y2YPSSM_CLOSED_DAY']))
+                    {
+                        
+                        for($i=0;$i<sizeof($result['Y2YPSSM_CLOSED_DAY']);$i++){
+                            if($result['Y2YPSSM_CLOSED_DAY'][$i]=='yes')
+                            {
+                                $closed_days[] = $i;
+                            }
+                        }
+                    }
+
+                    $today = getdate();
+                    $today = $today['year'].'-'.$today['mon'].'-'.$today['mday'].' '.$today['hours'].':'.$today['minutes'].':'.$today['seconds'];
+                    $timeout = $result['Y2YPSSM_TIMEOUT'];
+                    ?>
+                    <div id="y2y-sentence"></div>
+                </div>
             </div>
             <script type="text/javascript">
-                $(".y2ypssm-datepicker-holder").DateTimePicker({
-                    mode: "datetime",
-                    dateTimeFormat: 'dd-MM-yyyy HH:mm',
-                    minDateTime: '<?php echo $minDate; ?>',
-                    language: 'fr',
-                    minuteInterval: 15,
-                    roundOffMinutes: true,
-                    defaultDate: '<?php $this->getMinDateForJS($minDate); ?>'
+                var today = '<?php echo $today; ?>';
+                var timeout = <?php echo $timeout; ?>;
+                var openning_hours = [<?php echo '"'.implode('","', $result['Y2YPSSM_OPENING_HOURS']).'"' ?>];
+                var closing_hours = [<?php echo '"'.implode('","', $result['Y2YPSSM_CLOSING_HOURS']).'"' ?>];
+                var today_week = moment(today).format('e');
+                var now = moment(today);
+                var nowtimeout = now.add(timeout+1,'hour');
+                if(moment(closing_hours[today_week],'HH[h]mm')>moment(nowtimeout,'HH[h]mm')){
+                    minDate = 0;
+                }else{
+                    minDate=1;
+                    week = <?php echo json_encode($result['Y2YPSSM_CLOSED_DAY']) ?>;
+                    var week = $.map(week, function(el) { return el });
+                    tommorrow = moment(today).add(1,'day').format('e');
+                    nch = $.merge(week.slice(tommorrow), week.slice(0,tommorrow));
+                    $.each(nch , function(i, val) {
+                        if(val==='yes'){
+                            minDate = i;
+                            return false;
+                        }
+                    });
+                }
+                
+                
+                cd = [<?php echo implode(',', $closed_days) ?>];
+                var cal = $('#y2y_module #calendar').datepicker({
+                    minDate: minDate,
+                    altField: "#y2y_module #y2y_hidden_date",
+                    altFormat: "yy-mm-dd",
+                    setDate: minDate,
+                    gotoCurrent: true,
+                    buttonText: "Select date",
+                    beforeShowDay: function(date) {
+                        var day = date.getDay();
+                        if ($.inArray(day, cd) === -1) {
+                          return [true, "","Available"];
+                        } else {
+                          return [false,"","unAvailable"];
+                        }
+                    },
+                    onSelect: function(date) {
+                        $("#y2y_module #y2y_hidden_date").trigger("change");
+                    }
                 });
+                $('#y2y_module  .call-modal').on('click', function(event) {
+                    event.preventDefault();
+                    $("#y2y_module  #y2y_hidden_date").trigger("change");
+                    $('#modal-y2y').dialog({
+                        width: '45%',
+                        close: function(event, ui){
+                            select_time();
+                        }
+                    });
+                });
+                
+                
+                $("#y2y_module #y2y_hidden_date").change(function() {
+                    val = $("#y2y_module #y2y_hidden_date").val();
+                    choosen_day = moment(val).day();
+                    var times = [];
+                    lunch_beg = [<?php echo '"'.implode('","', $result['Y2YPSSM_LUNCH_TIME_BEGIN']).'"' ?>];
+                    lunch_end = [<?php echo '"'.implode('","', $result['Y2YPSSM_LUNCH_TIME_END']).'"' ?>];
+                    choosen_day = moment(val).day();
+                    beg_hour = openning_hours[choosen_day];
+                    end_hour = closing_hours[choosen_day];
+                    lunch_beg = lunch_beg[choosen_day];
+                    lunch_end = lunch_end[choosen_day];
+                    var now = moment(today).format('HH[h]mm');
+                    now_m = moment(now,'HH[h]mm').format('mm');
+                    while(now_m!=='00' && now_m!=='30'){
+                        now = moment(now,'HH[h]mm').add(1,'minute');
+                        now_m = moment(now,'HH[h]mm').format('mm');
+                    }
+                    if(moment(today).format('YYYY-MM-DD') === val){
+                        //today
+                        if(lunch_beg!=='' || lunch_end!=='')
+                        {
+                            //morning
+                            add = timeout+1;
+                            if(moment(now,'HH[h]mm') < moment(beg_hour,'HH[h]mm')){
+                                now = beg_hour;
+                            }
+                            while(moment(now,'HH[h]mm').add(timeout+1,'hour') < moment(lunch_beg,'HH[h]mm').add(add,'hour')){
+                                now = moment(now,'HH[h]mm').add(add,'hour');
+                                times.push(moment(now,'HH[h]mm').format('HH[h]mm')+" - "+moment(now,'HH[h]mm').add(1,'hour').format('HH[h]mm'));
+                                add = 1;
+                            }
+
+                            //afternnoon
+                            add = timeout+1;
+                            if(moment(now,'HH[h]mm') < moment(lunch_end,'HH[h]mm')){
+                                now = lunch_end;
+                            }
+                            while(moment(now,'HH[h]mm').add(timeout+1,'hour') < moment(end_hour,'HH[h]mm').add(add,'hour')){
+                                now = moment(now,'HH[h]mm').add(add,'hour');
+                                times.push(moment(now,'HH[h]mm').format('HH[h]mm')+" - "+moment(now,'HH[h]mm').add(1,'hour').format('HH[h]mm'));
+                                add = 1;
+                            }
+                        }
+                        else
+                        {
+                            add = timeout+1;
+                            if(moment(now,'HH[h]mm') < moment(beg_hour,'HH[h]mm')){
+                                now = beg_hour;
+                            }
+                            while(moment(now,'HH[h]mm').add(timeout+1,'hour') < moment(end_hour,'HH[h]mm').add(add,'hour')){
+                                now = moment(now,'HH[h]mm').add(add,'hour');
+                                times.push(moment(now,'HH[h]mm').format('HH[h]mm')+" - "+moment(now,'HH[h]mm').add(1,'hour').format('HH[h]mm'));
+                                add = 1;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        //not today
+                        if(lunch_beg!=='' || lunch_end!=='')
+                        {
+                            //morning
+                            while(moment(beg_hour,'HH[h]mm').add(1,'hour') < moment(lunch_beg,'HH[h]mm').add(1,'hour')){
+                                beg_hour = moment(beg_hour,'HH[h]mm').add(1,'hour');
+                                times.push(moment(beg_hour,'HH[h]mm').format('HH[h]mm')+" - "+moment(beg_hour,'HH[h]mm').add(1,'hour').format('HH[h]mm'));
+                            }
+
+                            //afeternoon
+                            while(moment(lunch_end,'HH[h]mm').add(1,'hour') < moment(end_hour,'HH[h]mm').add(1,'hour')){
+                                lunch_end = moment(lunch_end,'HH[h]mm').add(1,'hour');
+                                times.push(moment(lunch_end,'HH[h]mm').format('HH[h]mm')+" - "+moment(lunch_end,'HH[h]mm').add(1,'hour').format('HH[h]mm'));
+                            }
+                        }
+                        else
+                        {
+                            //morning
+                            while(moment(beg_hour,'HH[h]mm').add(1,'hour') < moment(end_hour,'HH[h]mm').add(1,'hour')){
+                                beg_hour = moment(beg_hour,'HH[h]mm').add(1,'hour');
+                                times.push(moment(beg_hour,'HH[h]mm').format('HH[h]mm')+" - "+moment(beg_hour,'HH[h]mm').add(1,'hour').format('HH[h]mm'));
+                            }
+                        }
+                    }
+
+                    rawtime = $("#y2y_module input[id=y2y_hidden_time]").val();
+                    var radiobtns = '';
+                    for (i = 0; i < times.length; i++){
+                        span = times[i].split(' - ');
+                        if(rawtime === (span[0]+'-'+span[1]) || i===0){
+                            checked='checked="checked"';
+                        }else{
+                            checked='';
+                        }
+
+                        radiobtns += '<div class="buttonsetv" onchange="javascript:generate_sentence();" name="radio-group-'+i+'">'
+                                            +'<input type="radio" id="time'+i+'" name="time" '+checked+' value="'+span[0]+'-'+span[1]+'">'+'\
+                                            <label for="time'+i+'">'+times[i]+'</label>'
+                                    +'</div>';
+                    }
+                    if(radiobtns===''){
+                        radiobtns = '<p style="algin-text:center">Il n\'y a pas de livraisons ce jour-là</p>';
+                    }
+
+                    $("#y2y_module .radio-buttons").html(radiobtns);
+                    $('#y2y_module .buttonsetv').buttonsetv();
+                    generate_sentence();
+                });
+                
+                
+                function select_time()
+                {
+                    generate_sentence();
+                    $("#modal-y2y").dialog('close');
+                }
+
+
+                function generate_sentence()
+                {
+                    time_sel = $('#y2y_module .y2y_time .radio-buttons input[name=time]:checked').val();
+                    $('#y2y_module #y2y_hidden_time').val(time_sel);
+                    val = $("#y2y_hidden_date").val();
+                    choosen_date = val.split('-');
+                    monthpos = choosen_date[1].replace(/^0+/, '');
+                    choosen_day = choosen_date[2].replace(/^0+/, '');
+                    time_sent = '';
+                    rawtime = $("#y2y_module #y2y_hidden_time").val();
+                    time = rawtime;
+                    if(time!==''){
+                        time = time.split('-');
+                        time_sent = time[0].toString().replace('h',':')+":00";
+                        time = "Veuillez vous rendre disponible de "+time[0]+" à "+time[1];
+                    }
+                    $("#y2y_module #y2y_delivery_date").val(val+" "+time_sent);
+                    var months = [
+                        "janvier",
+                        "février",
+                        "mars",
+                        "avril",
+                        "mai",
+                        "juin",
+                        "juillet",
+                        "août",
+                        "septembre",
+                        "octobre",
+                        "novembre",
+                        "décembre",
+                    ];
+                    var week = [
+                        "dimanche",
+                        "lundi",
+                        "mardi",
+                        "mercredi",
+                        "jeudi",
+                        "vendredi",
+                        "samedi",
+                    ];
+
+                    var year = choosen_date[0];
+                    var dayofthemonth = choosen_day;
+                    choosen_day = moment(val).day();
+                    var dayoftheweek = week[choosen_day];
+                    var month = months[monthpos-1];
+                    $("#y2y_module #y2y-sentence").html("Vous avez choisi le "+dayoftheweek+" "+dayofthemonth+" "+month+" "+year+". "+time+" pour réceptionner votre colis auprès du livreur. Il vous demandera un code que vous allez recevoir par SMS dans quelques minutes.");
+                }
+                $("#y2y_module #y2y_hidden_date").trigger("change");
             </script>
             <?php
             return ob_get_clean();
@@ -607,7 +898,7 @@ class Y2YPSSM extends CarrierModule {
         $order_carrier_id = $params['cart']->id_carrier;
         
         if($order_carrier_id == Configuration::get('Y2YPSSM_CARRIER_ID')){
-            $delivery_date = Tools::getValue('y2ypssm_delivery_date','');
+            $delivery_date = Tools::getValue('y2y_delivery_date','');
             if( ($error_message = $this->_validateDeliveryDate($delivery_date)) !== true){
                 $this->context->controller->errors[] = $error_message;
                 return false;
@@ -654,12 +945,17 @@ class Y2YPSSM extends CarrierModule {
     private function _loadCss() {
         $this->context->controller->addCSS($this->_path . 'assets/css/DateTimePicker.css');
         $this->context->controller->addCSS($this->_path . 'assets/css/y2ypssm.css');
+        $this->context->controller->addCSS($this->_path . 'assets/js/jquery-calendar/jquery-ui.min.css');
     }
 
     private function _loadJs() {
+        $this->context->controller->addJS($this->_path . 'assets/js/y2ypssm.js');
         $this->context->controller->addJS($this->_path . 'assets/js/DateTimePicker/DateTimePicker.js');
         $this->context->controller->addJS($this->_path . 'assets/js/DateTimePicker/i18n/DateTimePicker-i18n-fr.js');
-        $this->context->controller->addJS($this->_path . 'assets/js/y2ypssm.js');
+        $this->context->controller->addJS($this->_path . 'assets/js/moment-with-locales/moment.js');
+        $this->context->controller->addJS($this->_path . 'assets/js/jquery-calendar/jquery-ui.js');
+        $this->context->controller->addJS($this->_path . 'assets/js/jquery.verticalradio/jquery.verticalradio.js');
+        
     }
     
     protected function getDaysOfWeek() {
@@ -687,7 +983,6 @@ class Y2YPSSM extends CarrierModule {
 
             $i--;
         }
-        //die(var_dump($values));
         return $values;
     }
 

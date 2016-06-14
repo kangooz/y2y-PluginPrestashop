@@ -38,7 +38,7 @@
                 <div class="form-group">
                     <label for="{$key}" class="col-sm-2 control-label">{$value.desc}</label>
                     <div class="col-sm-10">
-                        <input type="{$value.type}" class="form-control" id="{$key}" name="{$key}" value="{$configValues.$key|default:2}" min="2" step="0.01">
+                        <input type="{$value.type}" class="form-control" id="{$key}" name="{$key}" value="{$configValues.$key|default:0}" min="0" step="0.5">
                     </div>
                 </div>
             {elseif $value.type == 'textarea'}
@@ -46,6 +46,14 @@
                     <label for="{$key}" class="col-sm-2 control-label">{$value.desc}</label>
                     <div class="col-sm-10">
                         <textarea class="form-control" id="{$key}" name="{$key}" rows="2">{$configValues.$key}</textarea>
+                    </div>
+                </div>
+            {elseif $value.type == 'checkbox' && $value.desc == 'Inline Calendar'}
+                <div class="form-group">
+                    <label for="{$key}" class="col-sm-2 control-label">{$value.desc}</label>
+                    <div class="col-sm-10">
+                        <input type="checkbox" name="{$key}" value="yes" 
+                            {if $configValues.$key == "yes"}checked="checked"{/if}>
                     </div>
                 </div>
             {/if}
@@ -91,14 +99,14 @@
                                     {l s='until' mod='y2ypssm'}
                                 </div>
                                 <div class="col-md-2">
-                                    <input type='text' name="Y2YPSSM_LUNCH_TIME_BEGIN[{$key}]" id="Y2YPSSM_LUNCH_TIME_BEGIN[{$key}]" 
-                                           value="{$configValues.Y2YPSSM_LUNCH_TIME_BEGIN.$key}" class="y2ypssm-timepicker" data-field="time" readonly>
+                                    <input type='text' name="Y2YPSSM_LUNCH_TIME_END[{$key}]" id="Y2YPSSM_LUNCH_TIME_END[{$key}]" 
+                                           value="{$configValues.Y2YPSSM_LUNCH_TIME_END.$key}" class="y2ypssm-timepicker" data-field="time" readonly>
                                 </div>
                             </td>
                             <td>
                                 <div class="col-md-12">
                                     <input type="checkbox" name="Y2YPSSM_CLOSED_DAY[{$key}]" value="yes" 
-                                           {if $configValues.Y2YPSSM_CLOSED_DAY.$key == "yes"}checked="checked"{/if}>
+                                        {if $configValues.Y2YPSSM_CLOSED_DAY.$key == "yes"}checked="checked"{/if}>
                                 </div>
                             </td>
                         </tr>

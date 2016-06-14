@@ -25,6 +25,7 @@
 * Don't forget to prefix your containers with your own identifier
 * to avoid any conflicts with others containers.
 */
+
 (function($) {
     $(document).ready(function(){
         if($(document).find('input.delivery_option_radio:checked').length > 0){
@@ -37,8 +38,8 @@
                         updateCarrierSelectionAndGift();
            });
         }
-       
-        $('#delivery_date').attr('data-field', 'datetime');
+        $("#y2ypssm_delivery_date").datepicker();
+        //$('#delivery_date').attr('data-field', 'datetime');
         $( ".y2ypssm-timepicker-holder" ).DateTimePicker({
             mode: "time",
             language: 'fr',
