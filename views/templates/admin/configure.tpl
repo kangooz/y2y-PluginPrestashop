@@ -34,11 +34,18 @@
                         <input type="{$value.type}" class="form-control" id="{$key}" name="{$key}" value="{$configValues.$key}">
                     </div>
                 </div>
-            {elseif $value.type == 'number'}
+            {elseif $value.type == 'number' && $value.desc == 'Timeout'}
                 <div class="form-group">
                     <label for="{$key}" class="col-sm-2 control-label">{$value.desc}</label>
                     <div class="col-sm-10">
                         <input type="{$value.type}" class="form-control" id="{$key}" name="{$key}" value="{$configValues.$key|default:0}" min="0" step="0.5">
+                    </div>
+                </div>
+            {elseif $value.type == 'number' && $value.desc == 'Rows'}
+                <div class="form-group">
+                    <label for="{$key}" class="col-sm-2 control-label">{$value.desc}</label>
+                    <div class="col-sm-10">
+                        <input type="{$value.type}" class="form-control" id="{$key}" name="{$key}" value="{$configValues.$key|default:5}" min="1" step="1">
                     </div>
                 </div>
             {elseif $value.type == 'textarea'}

@@ -103,6 +103,7 @@ class Y2YPSSM extends CarrierModule {
             'Y2YPSSM_STORE_POSTALCODE' => array('type' => 'text', 'desc' => $this->l('Store Postalcode')),
             'Y2YPSSM_STORE_INFORMATION' => array('type' => 'textarea', 'desc' => $this->l('Store Information')),
             'Y2YPSSM_INLINE_CALENDAR' => array('type' => 'checkbox', 'desc' => $this->l('Inline Calendar')),
+            'Y2YPSSM_ROWS' => array('type' => 'number', 'desc' => $this->l('Rows')),
             'Y2YPSSM_OPENING_HOURS' => array('type' => 'time', 'desc' => $this->l('Opening hours')),
             'Y2YPSSM_CLOSING_HOURS' => array('type' => 'time', 'desc' => $this->l('Opening hours')),
             'Y2YPSSM_LUNCH_TIME_BEGIN' => array('type' => 'time', 'desc' => $this->l('Lunch time')),
@@ -606,6 +607,9 @@ class Y2YPSSM extends CarrierModule {
                     <input type="hidden" class="form-control" id="y2y_delivery_date" name="y2y_delivery_date">
                     <input type="hidden" class="form-control" id="y2y_hidden_time" name="y2y_hidden_time">
                     <div class="y2ypssm-datepicker-holder"></div>
+                    <div style="margin:10px 0 10px 0;">
+                        <b>Merci de choisir votre créneau de livraison</b>
+                    </div>
                     <?php
                     $result = $this->getConfigValues();
                     $inline_cal=$result['Y2YPSSM_INLINE_CALENDAR'];
@@ -621,7 +625,7 @@ class Y2YPSSM extends CarrierModule {
                     ?>
                         <div id="modal-y2y" class="col-1" style="display:none">
                             <div id="calendar" class="col-1" style="float: left;"></div>
-                                <div class="y2y_time" style=" float: right;">
+                                <div class="y2y_time">
                                     <div class="radio-buttons"></div>
                                 </div>
                                 <div style="width:100%;display:table; padding:4px;">
@@ -635,12 +639,9 @@ class Y2YPSSM extends CarrierModule {
                     }
                     $closed_days = '';
 
-                    if(!empty($result['Y2YPSSM_CLOSED_DAY']))
-                    {
-                        
+                    if(!empty($result['Y2YPSSM_CLOSED_DAY'])){
                         for($i=0;$i<sizeof($result['Y2YPSSM_CLOSED_DAY']);$i++){
-                            if($result['Y2YPSSM_CLOSED_DAY'][$i]=='yes')
-                            {
+                            if($result['Y2YPSSM_CLOSED_DAY'][$i]=='yes'){
                                 $closed_days[] = $i;
                             }
                         }
@@ -649,6 +650,7 @@ class Y2YPSSM extends CarrierModule {
                     $today = getdate();
                     $today = $today['year'].'-'.$today['mon'].'-'.$today['mday'].' '.$today['hours'].':'.$today['minutes'].':'.$today['seconds'];
                     $timeout = $result['Y2YPSSM_TIMEOUT'];
+                    $rows = (empty($result['Y2YPSSM_ROWS'])) ? 5 : $result['Y2YPSSM_ROWS'];
                     ?>
                     <div id="y2y-sentence"></div>
                 </div>
@@ -670,8 +672,8 @@ class Y2YPSSM extends CarrierModule {
                     tommorrow = moment(today).add(1,'day').format('e');
                     nch = $.merge(week.slice(tommorrow), week.slice(0,tommorrow));
                     $.each(nch , function(i, val) {
-                        if(val==='yes'){
-                            minDate = i;
+                        if(val!=='yes'){
+                            minDate = i+1;
                             return false;
                         }
                     });
@@ -702,7 +704,7 @@ class Y2YPSSM extends CarrierModule {
                     event.preventDefault();
                     $("#y2y_module  #y2y_hidden_date").trigger("change");
                     $('#modal-y2y').dialog({
-                        width: '45%',
+                        width: '50%',
                         close: function(event, ui){
                             select_time();
                         }
@@ -714,6 +716,8 @@ class Y2YPSSM extends CarrierModule {
                     val = $("#y2y_module #y2y_hidden_date").val();
                     choosen_day = moment(val).day();
                     var times = [];
+                    var openning_hours = [<?php echo '"'.implode('","', $result['Y2YPSSM_OPENING_HOURS']).'"' ?>];
+                    var closing_hours = [<?php echo '"'.implode('","', $result['Y2YPSSM_CLOSING_HOURS']).'"' ?>];
                     lunch_beg = [<?php echo '"'.implode('","', $result['Y2YPSSM_LUNCH_TIME_BEGIN']).'"' ?>];
                     lunch_end = [<?php echo '"'.implode('","', $result['Y2YPSSM_LUNCH_TIME_END']).'"' ?>];
                     choosen_day = moment(val).day();
@@ -729,8 +733,7 @@ class Y2YPSSM extends CarrierModule {
                     }
                     if(moment(today).format('YYYY-MM-DD') === val){
                         //today
-                        if(lunch_beg!=='' || lunch_end!=='')
-                        {
+                        if(lunch_beg!=='' || lunch_end!==''){
                             //morning
                             add = timeout+1;
                             if(moment(now,'HH[h]mm') < moment(beg_hour,'HH[h]mm')){
@@ -769,12 +772,11 @@ class Y2YPSSM extends CarrierModule {
                     else
                     {
                         //not today
-                        if(lunch_beg!=='' || lunch_end!=='')
-                        {
+                        if(lunch_beg!=='' || lunch_end!==''){
                             //morning
-                            while(moment(beg_hour,'HH[h]mm').add(1,'hour') < moment(lunch_beg,'HH[h]mm').add(1,'hour')){
+                            while(moment(beg_hour,'HH[h]mm').add(1,'hour') < moment(lunch_beg).add(1,'hour')){
                                 beg_hour = moment(beg_hour,'HH[h]mm').add(1,'hour');
-                                times.push(moment(beg_hour,'HH[h]mm').format('HH[h]mm')+" - "+moment(beg_hour,'HH[h]mm').add(1,'hour').format('HH[h]mm'));
+                                times.push(moment(beg_hour,'HH[h]mm')+" - "+moment(beg_hour,'HH[h]mm').add(1,'hour').format('HH[h]mm'));
                             }
 
                             //afeternoon
@@ -792,7 +794,7 @@ class Y2YPSSM extends CarrierModule {
                             }
                         }
                     }
-
+                    
                     rawtime = $("#y2y_module input[id=y2y_hidden_time]").val();
                     var radiobtns = '';
                     for (i = 0; i < times.length; i++){
@@ -804,37 +806,34 @@ class Y2YPSSM extends CarrierModule {
                         }
                         
                         
-                        if(i === 0)
-                        {
+                        if(i === 0){
                             radiobtns = '<div style="float:left;margin-left:10px;">'+radiobtns;
                         }
-                        if(i % 5 === 0 && i!==0)
-                        {
+                        rows = <?php echo $rows; ?>;
+                        
+                        if(i % rows === 0 && i!==0){
                             radiobtns = radiobtns+'<div style="float:left;">';
                         }
                         radiobtns += '<div class="buttonsetv" onchange="javascript:generate_sentence();" name="radio-group-'+i+'">'
                                             +'<input type="radio" id="time'+i+'" name="time" '+checked+' value="'+span[0]+'-'+span[1]+'">'+'\
                                             <label for="time'+i+'">'+times[i]+'</label>'
                                     +'</div>';
-                        if(i!==0)
-                        {
-                            if( (i === times.length-1))
-                            {
+                        if(i!==0){
+                            if( (i === times.length-1)){
                                 radiobtns+='</div>';
                             }
-                            console.debug(i+1%5);
-                            if((i+1)%5===0)
-                            {
+                            if((i+1)%rows===0){
                                 radiobtns+='</div>';
                             }
                         }
                     }
+                    
                     if(radiobtns===''){
                         radiobtns = '<p style="algin-text:center">Il n\'y a pas de livraisons ce jour-là</p>';
                     }
                     
-                    $("#y2y_module .radio-buttons").html(radiobtns);
-                    $('#y2y_module .buttonsetv').buttonsetv();
+                    $(".y2y_time .radio-buttons").html(radiobtns);
+                    $('.y2y_time .buttonsetv').buttonsetv();
                     generate_sentence();
                 });
                 
