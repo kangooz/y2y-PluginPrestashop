@@ -612,8 +612,8 @@ class Y2YPSSM extends CarrierModule {
                     if($inline_cal==='yes' || !empty($inline_cal))
                     {
                     ?>
-                        <div id="calendar" class="inline-calendar"></div>
-                        <div class="y2y_time">
+                        <div id="calendar" class="inline-calendar" style="float:left;"></div>
+                        <div class="y2y_time" style="max-height:100px; min-height:200px">
                             <div class="radio-buttons"></div>
                         </div>
                     <?php
@@ -736,7 +736,7 @@ class Y2YPSSM extends CarrierModule {
                             if(moment(now,'HH[h]mm') < moment(beg_hour,'HH[h]mm')){
                                 now = beg_hour;
                             }
-                            while(moment(now,'HH[h]mm').add(timeout+1,'hour') < moment(lunch_beg,'HH[h]mm').add(add,'hour')){
+                            while(moment(now,'HH[h]mm').add(timeout+1,'hour') <= moment(lunch_beg,'HH[h]mm').add(add,'hour')){
                                 now = moment(now,'HH[h]mm').add(add,'hour');
                                 times.push(moment(now,'HH[h]mm').format('HH[h]mm')+" - "+moment(now,'HH[h]mm').add(1,'hour').format('HH[h]mm'));
                                 add = 1;
@@ -747,7 +747,7 @@ class Y2YPSSM extends CarrierModule {
                             if(moment(now,'HH[h]mm') < moment(lunch_end,'HH[h]mm')){
                                 now = lunch_end;
                             }
-                            while(moment(now,'HH[h]mm').add(timeout+1,'hour') < moment(end_hour,'HH[h]mm').add(add,'hour')){
+                            while(moment(now,'HH[h]mm').add(timeout+1,'hour') <= moment(end_hour,'HH[h]mm').add(add,'hour')){
                                 now = moment(now,'HH[h]mm').add(add,'hour');
                                 times.push(moment(now,'HH[h]mm').format('HH[h]mm')+" - "+moment(now,'HH[h]mm').add(1,'hour').format('HH[h]mm'));
                                 add = 1;
@@ -759,7 +759,7 @@ class Y2YPSSM extends CarrierModule {
                             if(moment(now,'HH[h]mm') < moment(beg_hour,'HH[h]mm')){
                                 now = beg_hour;
                             }
-                            while(moment(now,'HH[h]mm').add(timeout+1,'hour') < moment(end_hour,'HH[h]mm').add(add,'hour')){
+                            while(moment(now,'HH[h]mm').add(timeout+1,'hour') <= moment(end_hour,'HH[h]mm').add(add,'hour')){
                                 now = moment(now,'HH[h]mm').add(add,'hour');
                                 times.push(moment(now,'HH[h]mm').format('HH[h]mm')+" - "+moment(now,'HH[h]mm').add(1,'hour').format('HH[h]mm'));
                                 add = 1;
@@ -802,16 +802,37 @@ class Y2YPSSM extends CarrierModule {
                         }else{
                             checked='';
                         }
-
+                        
+                        
+                        if(i === 0)
+                        {
+                            radiobtns = '<div style="float:left;margin-left:10px;">'+radiobtns;
+                        }
+                        if(i % 5 === 0 && i!==0)
+                        {
+                            radiobtns = radiobtns+'<div style="float:left;">';
+                        }
                         radiobtns += '<div class="buttonsetv" onchange="javascript:generate_sentence();" name="radio-group-'+i+'">'
                                             +'<input type="radio" id="time'+i+'" name="time" '+checked+' value="'+span[0]+'-'+span[1]+'">'+'\
                                             <label for="time'+i+'">'+times[i]+'</label>'
                                     +'</div>';
+                        if(i!==0)
+                        {
+                            if( (i === times.length-1))
+                            {
+                                radiobtns+='</div>';
+                            }
+                            console.debug(i+1%5);
+                            if((i+1)%5===0)
+                            {
+                                radiobtns+='</div>';
+                            }
+                        }
                     }
                     if(radiobtns===''){
                         radiobtns = '<p style="algin-text:center">Il n\'y a pas de livraisons ce jour-là</p>';
                     }
-
+                    
                     $("#y2y_module .radio-buttons").html(radiobtns);
                     $('#y2y_module .buttonsetv').buttonsetv();
                     generate_sentence();
